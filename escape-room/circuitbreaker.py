@@ -21,7 +21,7 @@ CONFIG = {
         {"pin":  6, "valid_state": True},   # GPIO  6,  pin 31
         {"pin": 12, "valid_state": True}    # GPIO 12,  pin 32
     ],
-    "leds": [19, 16, 26], # Pins 35, 36, 37 respectively
+    "leds": [16, 19, 26], # Pins 35, 36, 37
     "osc_rx_server_ip": "0.0.0.0",
     "osc_rx_server_port": 8001,
     "osc_tx_client_ip": "10.100.20.255",
@@ -73,7 +73,8 @@ class LEDIndicator():
 
     @state.setter
     def state(self, value: bool):
-        logging.debug(f"Setting LEDIndicator(pin={self.pin}) state to: {value}")
+        if not self.__is_flashing:
+            logging.debug(f"Setting LEDIndicator(pin={self.pin}) state to: {value}")
         GPIO.output(self.pin, GPIO.HIGH if value else GPIO.LOW)
         
     def flash(self, interval: float = 0.6):
