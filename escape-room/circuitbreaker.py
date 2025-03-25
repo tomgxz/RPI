@@ -8,20 +8,20 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 CONFIG = {
     "circuit_breakers": [
-        {"pin": 7, "valid_state": True},
-        {"pin": 8, "valid_state": False},
-        {"pin": 11, "valid_state": False},
-        {"pin": 12, "valid_state": False},
-        {"pin": 15, "valid_state": True},
-        {"pin": 16, "valid_state": True},
-        {"pin": 21, "valid_state": False},
-        {"pin": 22, "valid_state": True},
-        {"pin": 23, "valid_state": False},
-        {"pin": 24, "valid_state": False},
-        {"pin": 27, "valid_state": True},
-        {"pin": 28, "valid_state": True}
+        {"pin":  4, "valid_state": True},   # GPIO  4,  pin  7
+        {"pin": 14, "valid_state": False},  # GPIO 14,  pin  8
+        {"pin": 17, "valid_state": False},  # GPIO 17,  pin 11
+        {"pin": 18, "valid_state": False},  # GPIO 18,  pin 12
+        {"pin": 22, "valid_state": True},   # GPIO 22,  pin 15
+        {"pin": 23, "valid_state": True},   # GPIO 23,  pin 16
+        {"pin":  9, "valid_state": False},  # GPIO  9,  pin 21
+        {"pin": 25, "valid_state": True},   # GPIO 25,  pin 22
+        {"pin": 11, "valid_state": False},  # GPIO 11,  pin 23
+        {"pin":  8, "valid_state": False},  # GPIO  8,  pin 24
+        {"pin":  6, "valid_state": True},   # GPIO  6,  pin 31
+        {"pin": 12, "valid_state": True}    # GPIO 12,  pin 32
     ],
-    "leds": [5, 6, 13],
+    "leds": [19, 16, 26], # Pins 35, 36, 37 respectively
     "osc_rx_server_ip": "0.0.0.0",
     "osc_rx_server_port": 8001,
     "osc_tx_client_ip": "10.100.20.255",
