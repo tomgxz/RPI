@@ -114,7 +114,7 @@ class Handler():
         osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG["osc_rx_server_ip"], CONFIG["osc_rx_server_port"]), osc_rx_dispatcher)
         osc_rx_server.serve_forever()
     
-    def on_breaker_change(self):
+    def on_breaker_change(self, *a):
         if self.__unlocked:
             return
         
