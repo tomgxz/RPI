@@ -123,8 +123,8 @@ class Handler():
         osc_rx_dispatcher = dispatcher.Dispatcher()
         osc_rx_dispatcher.map("/escaperoom/challenge/1/reset", self.reset)
         
-        osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG["osc_rx_server_ip"], CONFIG["osc_rx_server_port"]), osc_rx_dispatcher)
-        logging.debug(f"Starting OSC server listening on {CONFIG["osc_rx_server_ip"]}:{CONFIG["osc_rx_server_port"]}")
+        osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port']), osc_rx_dispatcher)
+        logging.debug(f"Starting OSC server listening on {CONFIG['osc_rx_server_ip']}:{CONFIG['osc_rx_server_port']}")
         osc_rx_server.serve_forever()
     
     def on_breaker_change(self, *a):
@@ -154,7 +154,7 @@ class Handler():
                 led.stop_flashing()
         
         if self.counter == 6:
-            logging.debug(f"Sending unlock osc command to {CONFIG["osc_tx_client_ip"]}:{CONFIG["osc_tx_client_port"]}")
+            logging.debug(f"Sending unlock osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
             
             self.__unlocked = True
             
