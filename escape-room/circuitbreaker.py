@@ -165,7 +165,7 @@ class Handler():
             osc_tx_client = udp_client.SimpleUDPClient(CONFIG["osc_tx_client_ip"], CONFIG["osc_tx_client_port"], allow_broadcast=True)
             osc_tx_client.send_message("/escaperoom/challenge/1/success", 1)
 
-    def reset(self):
+    def reset(self, *a):
         logging.debug("Resetting Handler...")
         self.__unlocked = False
         
