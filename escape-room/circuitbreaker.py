@@ -115,6 +115,9 @@ class Handler():
         
         self.leds:list[LEDIndicator] = [LEDIndicator(pin) for pin in CONFIG["leds"]]
         
+        for led in self.leds:
+            led.state = False
+        
         self.__unlocked = False
         
         self.counter:int = 0
