@@ -1,7 +1,10 @@
 import RPi.GPIO as GPIO # type: ignore
 from pythonosc import udp_client, dispatcher, osc_server
 import time, threading
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 CONFIG = {
     "circuit_breakers": [
@@ -28,6 +31,7 @@ CONFIG = {
 
 class CircuitBreaker():
     def __init__(self, pin: int, valid_state: bool, handler: "Handler"):
+        logging.debug(f"Initializing CircuitBreaker: pin={pin}, valid_state={valid_state}")
         self.handler:"Handler" = handler
         self.pin:int = pin
         self.valid_state:bool = valid_state
@@ -37,11 +41,13 @@ class CircuitBreaker():
 
     @property
     def state(self) -> bool:
-        return GPIO.input(self.pin) == GPIO.HIGH
+        state = GPIO.input(self.pin) == GPIO.HIGH
+        return state
     
     @property
     def valid(self) -> bool:
-        return self.state == self.valid_state
+        valid = self.state == self.valid_state
+        return valid
     
     def __repr__(self):
         return f"CircuitBreaker(pin={self.pin}, valid_state={self.valid_state}, state={self.state}, valid={self.valid})"
@@ -49,6 +55,7 @@ class CircuitBreaker():
 
 class LEDIndicator():
     def __init__(self, pin: int):
+        logging.debug(f"Initializing LEDIndicator: pin={pin}")
         self.pin:int = pin
         self.__stop_flashing = True
         self.__flash_thread = None
@@ -61,13 +68,16 @@ class LEDIndicator():
         
     @property
     def state(self) -> bool:
-        return GPIO.input(self.pin) == GPIO.HIGH
+        state = GPIO.input(self.pin) == GPIO.HIGH
+        return state
 
     @state.setter
     def state(self, value: bool):
+        logging.debug(f"Setting LEDIndicator(pin={self.pin}) state to: {value}")
         GPIO.output(self.pin, GPIO.HIGH if value else GPIO.LOW)
         
     def flash(self, interval: float = 0.6):
+        logging.debug(f"LEDIndicator(pin={self.pin}) start flashing with interval: {interval}")
         self.__stop_flashing_event.clear()
         
         def thread():
@@ -82,6 +92,7 @@ class LEDIndicator():
         
     def stop_flashing(self):
         if self.__is_flashing:
+            logging.debug(f"LEDIndicator(pin={self.pin}) stop flashing")
             self.__stop_flashing_event.set()
             self.__flash_thread.join()
             
@@ -94,6 +105,7 @@ class LEDIndicator():
 
 class Handler():
     def __init__(self):
+        logging.debug("Initializing Handler...")
         GPIO.setmode(GPIO.BCM)
 
         self.breakers:list[CircuitBreaker] = [
@@ -112,10 +124,14 @@ class Handler():
         osc_rx_dispatcher.map("/escaperoom/challenge/1/reset", self.reset)
         
         osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG["osc_rx_server_ip"], CONFIG["osc_rx_server_port"]), osc_rx_dispatcher)
+        logging.debug(f"Starting OSC server listening on {CONFIG["osc_rx_server_ip"]}:{CONFIG["osc_rx_server_port"]}")
         osc_rx_server.serve_forever()
     
     def on_breaker_change(self, *a):
+        logging.debug("Breaker state changed")
+        
         if self.__unlocked:
+            logging.debug("Already unlocked, ignoring breaker change")
             return
         
         self.counter = 0
@@ -124,7 +140,7 @@ class Handler():
             if breaker.state: # if the breaker is on
                 self.counter += 1 if breaker.valid else -1 # increment or decrement based on whether breaker should be on or off
         
-        print(f"Counter: {self.counter}")
+        logging.debug(f"Counter: {self.counter}")
         
         for index, led in enumerate(self.leds):
             if (index + 0.5) * 2 < self.counter:
@@ -138,7 +154,7 @@ class Handler():
                 led.stop_flashing()
         
         if self.counter == 6:
-            print("UNLOCKED")
+            logging.debug(f"Sending unlock osc command to {CONFIG["osc_tx_client_ip"]}:{CONFIG["osc_tx_client_port"]}")
             
             self.__unlocked = True
             
@@ -146,6 +162,7 @@ class Handler():
             osc_tx_client.send_message("/escaperoom/challenge/1/success", 1)
 
     def reset(self):
+        logging.debug("Resetting Handler...")
         self.__unlocked = False
         
         for led in self.leds:
