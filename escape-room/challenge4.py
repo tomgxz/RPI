@@ -8,19 +8,19 @@ from LED import LEDIndicator
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
+CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {    
     "circuit_breakers": [
-        {"pin":  4, "needs_cutting": False},  # GPIO  4,  pin  7
-        {"pin": 14, "needs_cutting": False},  # GPIO 14,  pin  8
         {"pin": 17, "needs_cutting": False},  # GPIO 17,  pin 11
-        {"pin": 18, "needs_cutting": False},  # GPIO 18,  pin 12
-        {"pin": 22, "needs_cutting": True},   # GPIO 22,  pin 15
-        {"pin": 23, "needs_cutting": False},  # GPIO 23,  pin 16
+        {"pin": 27, "needs_cutting": False},  # GPIO 27,  pin 13
+        {"pin": 22, "needs_cutting": False},  # GPIO 22,  pin 15
+        {"pin": 10, "needs_cutting": False},  # GPIO 10,  pin 19
+        {"pin":  9, "needs_cutting": True},   # GPIO  9,  pin 21
+        {"pin": 11, "needs_cutting": False},  # GPIO 11,  pin 23
     ],
     "leds": {
-        "red1": 19,
-        "red2": 26,
-        "green": 16
+        "red1": 23,
+        "red2": 24,
+        "green": 25
     },
     "osc_rx_server_ip": "0.0.0.0",
     "osc_rx_server_port": 8001,
@@ -30,9 +30,9 @@ CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
 
 
 class DiffusalWire():
-    def __init__(self, pin: int, needs_cutting: bool, handler: "Handler"):
+    def __init__(self, pin: int, needs_cutting: bool, handler: "DiffusalWire"):
         logging.debug(f"Initializing DiffusalWire: pin={pin}, needs_cutting={needs_cutting}")
-        self.handler:"Handler" = handler
+        self.handler:"DiffusalWire" = handler
         self.pin:int = pin
         self.needs_cutting:bool = needs_cutting
         
@@ -69,7 +69,7 @@ class WireCutHandler():
         }
         
         self.leds["red1"].flash(interval = 0.15)
-        self.leds["red2"].flash(interval = 0.15, initial_delay = 0.1)
+        self.leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
         self.leds["green"].state = False
         
         self.__unlocked = False
@@ -137,7 +137,7 @@ class WireCutHandler():
             led.stop_flashing()
         
         self.leds["red1"].flash(interval = 0.15)
-        self.leds["red2"].flash(interval = 0.15, initial_delay = 0.1)
+        self.leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
         self.leds["green"].state = False
         
         self.on_state_change()
