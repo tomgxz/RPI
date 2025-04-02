@@ -5,8 +5,8 @@ import time
 GPIO.setmode(GPIO.BCM)
 
 # Define GPIO pins for rows and columns
-rows = [21, 20, 16, 26]
-cols = [19, 13, 6]
+cols = [21, 20, 16]
+rows = [26, 19, 13, 6]
 
 # Set up the GPIO pins for rows (input with pull-up)
 for row in rows:
