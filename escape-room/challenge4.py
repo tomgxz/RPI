@@ -158,8 +158,8 @@ class KeypadHandler():
         # from right to left looking at the keypad, the GPIOs wired in to the pins are:
         # 21, 20, 16, 26, 19, 13, 6, 5
         
-        self.row_pins = [21, 20, 16, 26]
-        self.col_pins = [19, 13, 6]
+        self.row_pins = [5, 6, 13]
+        self.col_pins = [19, 26, 16, 20]
         
         self.factory = rpi_gpio.KeypadFactory()
         self.keypad = self.factory.create_keypad(keypad=self.keys, row_pins=self.row_pins, col_pins=self.col_pins)
