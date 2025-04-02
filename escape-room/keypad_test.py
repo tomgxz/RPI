@@ -8,8 +8,8 @@ GPIO.setmode(GPIO.BCM)
 # 21, 20, 16, 26, 19, 13, 6, 5
     
 # Define GPIO pins for rows and columns
-cols = [13, 6, 5]
-rows = [20, 16, 26, 19]
+cols = [5, 13, 6]
+rows = [19, 26, 16, 20]
 
 # Set up the GPIO pins for rows (input with pull-up)
 for row in rows:
