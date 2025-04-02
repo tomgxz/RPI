@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO # type: ignore
 from pythonosc import udp_client, dispatcher, osc_server
-import logging
+from pad4pi import keypad
+import logging, time
 
 from LED import LEDIndicator
 
@@ -52,9 +53,9 @@ class DiffusalWire():
         return f"DiffusalWire(pin={self.pin}, needs_cutting={self.needs_cutting}, state={self.state})"
 
 
-class Handler():
+class WireCutHandler():
     def __init__(self):
-        logging.debug("Initializing Handler...")
+        logging.debug("Initializing Wire Cut Handler...")
         GPIO.setmode(GPIO.BCM)
 
         self.wires:list[DiffusalWire] = [
@@ -142,5 +143,29 @@ class Handler():
         self.on_state_change()
 
 
+class KeypadHandler():
+    def __init__(self):
+        logging.debug("Initializing Keypad Handler...")
+        GPIO.setmode(GPIO.BCM)
+        
+        self.keys = [
+            ["1", "2", "3"],
+            ["4", "5", "6"],
+            ["7", "8", "9"],
+            ["*", "0", "#"]
+        ]
+        
+        self.row_pins = [17, 27, 22, 23]  # GPIOs for rows
+        self.col_pins = [4, 25, 8]        # GPIOs for columns
+        
+        self.factory = keypad.KeypadFactory()
+        self.keypad = self.factory.create_keypad(keypad=self.keys, row_pins=self.row_pins, col_pins=self.col_pins)
+        
+        def print_key(key):
+            logging.debug(f"Key Pressed: {key}")
+        
+        kp.registerKeyPressHandler(print_key)
+
 if __name__ == "__main__":
-    handler = Handler()
+    WireCutHandler()
+    KeypadHandler()
