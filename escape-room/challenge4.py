@@ -1,6 +1,6 @@
 import RPi.GPIO as GPIO # type: ignore
 from pythonosc import udp_client, dispatcher, osc_server
-from pad4pi import keypad
+from pad4pi import rpi_gpio
 import logging, time
 
 from LED import LEDIndicator
@@ -158,13 +158,13 @@ class KeypadHandler():
         self.row_pins = [17, 27, 22, 23]  # GPIOs for rows
         self.col_pins = [4, 25, 8]        # GPIOs for columns
         
-        self.factory = keypad.KeypadFactory()
+        self.factory = rpi_gpio.KeypadFactory()
         self.keypad = self.factory.create_keypad(keypad=self.keys, row_pins=self.row_pins, col_pins=self.col_pins)
         
         def print_key(key):
             logging.debug(f"Key Pressed: {key}")
         
-        kp.registerKeyPressHandler(print_key)
+        self.keypad.registerKeyPressHandler(print_key)
 
 if __name__ == "__main__":
     WireCutHandler()
