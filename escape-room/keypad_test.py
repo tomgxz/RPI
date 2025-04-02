@@ -4,9 +4,12 @@ import time
 # Set up the GPIO mode
 GPIO.setmode(GPIO.BCM)
 
+# from right to left looking at the keypad, the GPIOs wired in to the pins are:
+# 21, 20, 16, 26, 19, 13, 6, 5
+    
 # Define GPIO pins for rows and columns
-cols = [21, 20, 16]
-rows = [26, 19, 13, 6]
+rows = [19, 13, 6, 5]
+cols = [20, 16, 26]
 
 # Set up the GPIO pins for rows (input with pull-up)
 for row in rows:
