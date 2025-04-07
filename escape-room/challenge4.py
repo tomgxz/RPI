@@ -47,7 +47,17 @@ class OSCController():
 
     def start_server(self):
         logging.debug(f"OSC - Starting OSC server listening on {self.rx_ip}:{self.rx_port}")
-        self.server.serve_forever()
+        
+        if hasattr(self, 'server_thread') and self.server_thread.is_alive():
+            logging.debug("OSC - Server is already running, stopping it...")
+            self.server.shutdown()
+            self.server_thread.join()
+        
+        def serve():
+            self.server.serve_forever()
+        
+        self.server_thread = Thread(target=serve, daemon=True)
+        self.server_thread.start()
 
     def send_message(self, address: str, value):
         logging.debug(f"OSC - Sending OSC message to {self.tx_ip}:{self.tx_port} - {address}: {value}")
@@ -103,6 +113,8 @@ class WireCutHandler():
         
         self.osc_controller = osc_controller
         self.osc_controller.add_handler("/escaperoom/challenge/4/reset", self.reset)
+        
+        self.osc_controller.start_server()
         
         self.on_state_change()
 
@@ -205,6 +217,8 @@ class ElectroMagnentHandler():
         self.osc_controller = osc_controller
         self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", self.unlock)
         self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", self.lock)
+        
+        self.osc_controller.start_server()
         
     def unlock(self, *args):
         logging.debug("ELECTROMAGNET - Unlocking door...")
