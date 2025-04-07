@@ -1,7 +1,8 @@
 import RPi.GPIO as GPIO # type: ignore
 from pythonosc import udp_client, dispatcher, osc_server
-from pad4pi import rpi_gpio
-import logging, time
+from pad4pi import rpi_gpio # type: ignore
+from threading import Thread
+import logging
 
 from LED import LEDIndicator
 
@@ -23,9 +24,9 @@ CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
         "green": 25
     },
     "osc_rx_server_ip": "0.0.0.0",
-    "osc_rx_server_port": 8001,
+    "osc_rx_server_port": 10001,
     "osc_tx_client_ip": "10.100.20.255",
-    "osc_tx_client_port": 8000
+    "osc_tx_client_port": 10000
 }
 
 
@@ -168,7 +169,30 @@ class KeypadHandler():
             logging.debug(f"Key Pressed: {key}")
         
         self.keypad.registerKeyPressHandler(print_key)
+        
+
+class ElectroMagnentHandler():
+    def __init__(self):
+        logging.debug("Initializing Electromagnet Handler...")
+        GPIO.setmode(GPIO.BCM)
+        
+        self.relay_pin = 4 # GPIO 4, pin 7
+        
+        osc_rx_dispatcher = dispatcher.Dispatcher()
+        osc_rx_dispatcher.map("/escaperoom/vaultdoor/unlock", self.unlock)
+        osc_rx_dispatcher.map("/escaperoom/vaultdoor/lock", self.lock)
+        
+        osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port']), osc_rx_dispatcher)
+        logging.debug(f"Starting OSC server listening on {CONFIG['osc_rx_server_ip']}:{CONFIG['osc_rx_server_port']}")
+        osc_rx_server.serve_forever()
+        
+    def unlock(self):
+        GPIO.output(self.relay_pin, GPIO.HIGH)
+        
+    def lock(self):
+        GPIO.output(self.relay_pin, GPIO.HIGH)
 
 if __name__ == "__main__":
-    WireCutHandler()
-    KeypadHandler()
+    Thread(target=WireCutHandler).start()
+    Thread(target=KeypadHandler).start()
+    Thread(target=ElectroMagnentHandler).start()
