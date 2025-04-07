@@ -208,7 +208,7 @@ class Handler():
         self.keypad_col_pins = [19, 26, 16, 20]
         
         self.keypad_factory = rpi_gpio.KeypadFactory()
-        self.keypad_keypad = self.factory.create_keypad(keypad=self.keypad_keys, row_pins=self.keypad_row_pins, col_pins=self.keypad_col_pins)
+        self.keypad_keypad = self.keypad_factory.create_keypad(keypad=self.keypad_keys, row_pins=self.keypad_row_pins, col_pins=self.keypad_col_pins)
         
         def print_key(key):
             logging.debug(f"KEYPAD - Key Pressed: {key}")
