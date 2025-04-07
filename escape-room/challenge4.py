@@ -33,7 +33,7 @@ CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
 
 class OSCController():
     def __init__(self, rx_ip: str, rx_port: int, tx_ip: str, tx_port: int):
-        logging.debug("Initializing OSC Controller...")
+        logging.debug("OSC - Initializing OSC Controller...")
         self.rx_ip = rx_ip
         self.rx_port = rx_port
         self.tx_ip = tx_ip
@@ -46,18 +46,18 @@ class OSCController():
         self.dispatcher.map(address, handler)
 
     def start_server(self):
-        logging.debug(f"Starting OSC server listening on {self.rx_ip}:{self.rx_port}")
+        logging.debug(f"OSC - Starting OSC server listening on {self.rx_ip}:{self.rx_port}")
         self.server.serve_forever()
 
     def send_message(self, address: str, value):
-        logging.debug(f"Sending OSC message to {self.tx_ip}:{self.tx_port} - {address}: {value}")
+        logging.debug(f"OSC - Sending OSC message to {self.tx_ip}:{self.tx_port} - {address}: {value}")
         client = udp_client.SimpleUDPClient(self.tx_ip, self.tx_port, allow_broadcast=True)
         client.send_message(address, value)
         
 
 class DiffusalWire():
     def __init__(self, pin: int, needs_cutting: bool, handler: "DiffusalWire"):
-        logging.debug(f"Initializing DiffusalWire: pin={pin}, needs_cutting={needs_cutting}")
+        logging.debug(f"WIRECUT - Initializing DiffusalWire: pin={pin}, needs_cutting={needs_cutting}")
         self.handler:"DiffusalWire" = handler
         self.pin:int = pin
         self.needs_cutting:bool = needs_cutting
@@ -81,7 +81,7 @@ class DiffusalWire():
 
 class WireCutHandler():
     def __init__(self, osc_controller:OSCController):
-        logging.debug("Initializing Wire Cut Handler...")
+        logging.debug("WIRECUT - Initializing Wire Cut Handler...")
         GPIO.setmode(GPIO.BCM)
 
         self.wires:list[DiffusalWire] = [
@@ -107,10 +107,10 @@ class WireCutHandler():
         self.on_state_change()
 
     def on_state_change(self, *a):
-        logging.debug("Wire cut state changed")
+        logging.debug("WIRECUT - Wire cut state changed")
         
         if self.__unlocked:
-            logging.debug("Already unlocked, ignoring state change")
+            logging.debug("WIRECUT - Already unlocked, ignoring state change")
             return
         
         self.__unlocked = False
@@ -123,17 +123,17 @@ class WireCutHandler():
                 self.__exploded = True
                 
         if self.__exploded:
-            logging.debug(f"Incorrect wire cut")
+            logging.debug(f"WIRECUT - Incorrect wire cut")
             
             self.leds["red1"].flash(interval = 0.05)
             self.leds["red2"].flash(interval = 0.06)
             self.leds["green"].state = False
             
-            logging.debug(f"Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
+            logging.debug(f"WIRECUT - Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
             self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
         
         elif self.__unlocked:
-            logging.debug(f"Correct wire cut")
+            logging.debug(f"WIRECUT - Correct wire cut")
             
             for _, led in self.leds.items():
                 led.stop_flashing()
@@ -142,11 +142,11 @@ class WireCutHandler():
             self.leds["red2"].state = False
             self.leds["green"].state = True
 
-            logging.debug(f"Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
+            logging.debug(f"WIRECUT - Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
             self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
 
     def reset(self, *a):
-        logging.debug("Resetting Handler...")
+        logging.debug("WIRECUT - Resetting Handler...")
         
         self.__unlocked = False
         self.__exploded = False
@@ -163,7 +163,7 @@ class WireCutHandler():
 
 class KeypadHandler():
     def __init__(self, osc_controller:OSCController):
-        logging.debug("Initializing Keypad Handler...")
+        logging.debug("KEYPAD - Initializing Keypad Handler...")
         GPIO.setmode(GPIO.BCM)
         
         self.keys = [
@@ -183,14 +183,14 @@ class KeypadHandler():
         self.keypad = self.factory.create_keypad(keypad=self.keys, row_pins=self.row_pins, col_pins=self.col_pins)
         
         def print_key(key):
-            logging.debug(f"Key Pressed: {key}")
+            logging.debug(f"KEYPAD - Key Pressed: {key}")
         
         self.keypad.registerKeyPressHandler(print_key)
         
 
 class ElectroMagnentHandler():
     def __init__(self, osc_controller:OSCController):
-        logging.debug("Initializing Electromagnet Handler...")
+        logging.debug("ELECTROMAGNET - Initializing Electromagnet Handler...")
         GPIO.setmode(GPIO.BCM)
         
         self.relay_pin = 4 # GPIO 4, pin 7
@@ -201,11 +201,11 @@ class ElectroMagnentHandler():
         self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", self.lock)
         
     def unlock(self, *args):
-        logging.debug("Unlocking door...")
+        logging.debug("ELECTROMAGNET - Unlocking door...")
         GPIO.output(self.relay_pin, GPIO.HIGH)
         
     def lock(self, *args):
-        logging.debug("Locking door...")
+        logging.debug("ELECTROMAGNET - Locking door...")
         GPIO.output(self.relay_pin, GPIO.LOW)
 
 
