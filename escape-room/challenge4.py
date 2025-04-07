@@ -119,7 +119,7 @@ class WireCutHandler():
         cut_state = ""
         
         for wire in self.wires:
-            cut_state += int(wire.state)
+            cut_state += str(int(wire.state))
             
             if not wire.state and wire.needs_cutting:
                 self.__unlocked = True
