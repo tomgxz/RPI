@@ -177,6 +177,7 @@ class ElectroMagnentHandler():
         GPIO.setmode(GPIO.BCM)
         
         self.relay_pin = 4 # GPIO 4, pin 7
+        GPIO.setup(self.relay_pin, GPIO.HIGH)
         
         osc_rx_dispatcher = dispatcher.Dispatcher()
         osc_rx_dispatcher.map("/escaperoom/vaultdoor/unlock", self.unlock)
