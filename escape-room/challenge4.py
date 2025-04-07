@@ -221,9 +221,11 @@ class Handler():
             
             if not self.keypad_started:
                 logging.debug(f"KEYPAD - Puzzle not started, ignoring")
+                return
             
             if self.keypad_finished:
                 logging.debug(f"KEYPAD - Completed puzzle, ignoring")
+                return
             
             if key in ["*", "#"]:  # Clear button
                 logging.debug("KEYPAD - Input cleared")
