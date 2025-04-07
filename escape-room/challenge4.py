@@ -66,7 +66,7 @@ class DiffusalWire():
         self.pin:int = pin
         self.needs_cutting:bool = needs_cutting
         
-        GPIO.setup(self.pin, GPIO.IN)
+        GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.add_event_detect(self.pin, GPIO.BOTH, callback=self.handler.wirecut_on_state_change, bouncetime=200)
 
     @property
