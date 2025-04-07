@@ -237,8 +237,7 @@ class Handler():
                 if self.keypad_input == self.correct_code:
                     logging.debug("KEYPAD - Correct code entered")
                     self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
-                    self.keypad_input = ""
-                    self.keypad_strikes = 0
+                    self.keypad_finished = True
                 else:
                     logging.debug("KEYPAD - Incorrect code entered")
                     self.keypad_strikes += 1
@@ -248,7 +247,7 @@ class Handler():
                     if self.keypad_strikes >= 3:
                         logging.debug("KEYPAD - 3 strikes reached")
                         self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
-                        self.keypad_strikes = 0
+                        self.keypad_finished = True
         
         self.keypad_keypad.registerKeyPressHandler(handle_key)
     
