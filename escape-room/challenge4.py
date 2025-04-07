@@ -98,6 +98,9 @@ class Handler():
             CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
         )
         
+        self.keypad_started = False
+        self.keypad_finished = False
+        
         self.init_wire_cutting()
         self.init_keypad()
         self.init_vault_door()
@@ -186,9 +189,8 @@ class Handler():
             self.wirecut_leds["red1"].state = False
             self.wirecut_leds["red2"].state = False
             self.wirecut_leds["green"].state = True
-
-            logging.debug(f"WIRECUT - Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-            self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
+            
+            self.keypad_started = True # enable keypad
 
     
     def init_keypad(self):
@@ -210,10 +212,45 @@ class Handler():
         self.keypad_factory = rpi_gpio.KeypadFactory()
         self.keypad_keypad = self.keypad_factory.create_keypad(keypad=self.keypad_keys, row_pins=self.keypad_row_pins, col_pins=self.keypad_col_pins)
         
-        def print_key(key):
-            logging.debug(f"KEYPAD - Key Pressed: {key}")
+        self.keypad_input = ""
+        self.keypad_strikes = 0
+        self.correct_code = "8140"       
         
-        self.keypad_keypad.registerKeyPressHandler(print_key)
+        def handle_key(key):
+            logging.debug(f"KEYPAD - Key Pressed: {key}")
+            
+            if not self.keypad_started:
+                logging.debug(f"KEYPAD - Puzzle not started, ignoring")
+            
+            if self.keypad_finished:
+                logging.debug(f"KEYPAD - Completed puzzle, ignoring")
+            
+            if key in ["*", "#"]:  # Clear button
+                logging.debug("KEYPAD - Input cleared")
+                self.keypad_input = ""
+                return
+            
+            self.keypad_input += key
+            logging.debug(f"KEYPAD - Current Input: {self.keypad_input}")
+            
+            if len(self.keypad_input) == 4:  # Check if 4 digits are entered
+                if self.keypad_input == self.correct_code:
+                    logging.debug("KEYPAD - Correct code entered")
+                    self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
+                    self.keypad_input = ""
+                    self.keypad_strikes = 0
+                else:
+                    logging.debug("KEYPAD - Incorrect code entered")
+                    self.keypad_strikes += 1
+                    self.osc_controller.send_message("/escaperoom/challenge/4/keypad/incorrect", 1)
+                    self.keypad_input = ""
+                    
+                    if self.keypad_strikes >= 3:
+                        logging.debug("KEYPAD - 3 strikes reached")
+                        self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
+                        self.keypad_strikes = 0
+        
+        self.keypad_keypad.registerKeyPressHandler(handle_key)
     
     
     def init_vault_door(self):
@@ -226,11 +263,11 @@ class Handler():
         
         def unlock(self, *args):
             logging.debug("ELECTROMAGNET - Unlocking door...")
-            GPIO.output(relay_pin, GPIO.HIGH)
+            GPIO.output(relay_pin, GPIO.LOW)
             
         def lock(self, *args):
             logging.debug("ELECTROMAGNET - Locking door...")
-            GPIO.output(relay_pin, GPIO.LOW)
+            GPIO.output(relay_pin, GPIO.HIGH)
             
         self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", unlock)
         self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", lock)
