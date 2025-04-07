@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {    
     "circuit_breakers": [
-        {"pin": 12, "needs_cutting": False},  # GPIO 18,  pin 12
+        {"pin": 18, "needs_cutting": False},  # GPIO 18,  pin 12
         {"pin": 27, "needs_cutting": False},  # GPIO 27,  pin 13
         {"pin": 22, "needs_cutting": False},  # GPIO 22,  pin 15
         {"pin": 10, "needs_cutting": False},  # GPIO 10,  pin 19
@@ -140,6 +140,16 @@ class Handler():
         self.wirecut_on_state_change()
         
         self.osc_controller.add_handler("/escaperoom/challenge/4/reset", reset)
+        
+        import threading
+        
+        def debug():
+            _cut_state = ""
+            for wire in self.wirecut_wires:
+                _cut_state += str(int(wire.state))
+            print(_cut_state)
+            
+        threading.Thread(target=debug).start()
     
     
     def wirecut_on_state_change(self, *a):
