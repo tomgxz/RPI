@@ -1,9 +1,7 @@
 import RPi.GPIO as GPIO # type: ignore
 from pythonosc import udp_client, dispatcher, osc_server
 from pad4pi import rpi_gpio # type: ignore
-from threading import Thread
 import logging
-import socket
 
 from LED import LEDIndicator
 
@@ -41,6 +39,7 @@ class OSCController():
 
         self.dispatcher = dispatcher.Dispatcher()
         self.server = osc_server.BlockingOSCUDPServer((self.rx_ip, self.rx_port), self.dispatcher)
+        self.server_active = False
 
     def add_handler(self, address: str, handler):
         self.dispatcher.map(address, handler)
@@ -48,16 +47,11 @@ class OSCController():
     def start_server(self):
         logging.debug(f"OSC - Starting OSC server listening on {self.rx_ip}:{self.rx_port}")
         
-        if hasattr(self, 'server_thread') and self.server_thread.is_alive():
+        if self.server_active:
             logging.debug("OSC - Server is already running, stopping it...")
             self.server.shutdown()
-            self.server_thread.join()
         
-        def serve():
-            self.server.serve_forever()
-        
-        self.server_thread = Thread(target=serve, daemon=True)
-        self.server_thread.start()
+        self.server.serve_forever()
 
     def send_message(self, address: str, value):
         logging.debug(f"OSC - Sending OSC message to {self.tx_ip}:{self.tx_port} - {address}: {value}")
