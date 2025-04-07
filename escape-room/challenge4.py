@@ -104,14 +104,14 @@ class WireCutHandler():
         self.__unlocked = False
         self.__exploded = False
         
-        self.on_state_change()
-        
         self.osc_controller = OSCController(
             CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
             CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
         )
         self.osc_controller.add_handler("/escaperoom/challenge/4/reset", self.reset)
         self.osc_controller.start_server()
+        
+        self.on_state_change()
 
     def on_state_change(self, *a):
         logging.debug("Wire cut state changed")
