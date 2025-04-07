@@ -3,6 +3,7 @@ from pythonosc import udp_client, dispatcher, osc_server
 from pad4pi import rpi_gpio # type: ignore
 from threading import Thread
 import logging
+import socket
 
 from LED import LEDIndicator
 
@@ -29,6 +30,33 @@ CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
     "osc_tx_client_port": 10000
 }
 
+
+class OSCController():
+    def __init__(self, rx_ip: str, rx_port: int, tx_ip: str, tx_port: int):
+        logging.debug("Initializing OSC Controller...")
+        self.rx_ip = rx_ip
+        self.rx_port = rx_port
+        self.tx_ip = tx_ip
+        self.tx_port = tx_port
+
+        self.dispatcher = dispatcher.Dispatcher()
+        self.server = osc_server.BlockingOSCUDPServer((self.rx_ip, self.rx_port), self.dispatcher)
+
+        # Enable port reuse to avoid 'Address already in use' errors
+        self.server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    def add_handler(self, address: str, handler):
+        self.dispatcher.map(address, handler)
+
+    def start_server(self):
+        logging.debug(f"Starting OSC server listening on {self.rx_ip}:{self.rx_port}")
+        Thread(target=self.server.serve_forever).start()
+
+    def send_message(self, address: str, value):
+        logging.debug(f"Sending OSC message to {self.tx_ip}:{self.tx_port} - {address}: {value}")
+        client = udp_client.SimpleUDPClient(self.tx_ip, self.tx_port, allow_broadcast=True)
+        client.send_message(address, value)
+        
 
 class DiffusalWire():
     def __init__(self, pin: int, needs_cutting: bool, handler: "DiffusalWire"):
@@ -78,13 +106,13 @@ class WireCutHandler():
         
         self.on_state_change()
         
-        osc_rx_dispatcher = dispatcher.Dispatcher()
-        osc_rx_dispatcher.map("/escaperoom/challenge/4/reset", self.reset)
-        
-        osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port']), osc_rx_dispatcher)
-        logging.debug(f"Starting OSC server listening on {CONFIG['osc_rx_server_ip']}:{CONFIG['osc_rx_server_port']}")
-        osc_rx_server.serve_forever()
-    
+        self.osc_controller = OSCController(
+            CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
+            CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
+        )
+        self.osc_controller.add_handler("/escaperoom/challenge/4/reset", self.reset)
+        self.osc_controller.start_server()
+
     def on_state_change(self, *a):
         logging.debug("Wire cut state changed")
         
@@ -109,9 +137,7 @@ class WireCutHandler():
             self.leds["green"].state = False
             
             logging.debug(f"Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-                    
-            osc_tx_client = udp_client.SimpleUDPClient(CONFIG["osc_tx_client_ip"], CONFIG["osc_tx_client_port"], allow_broadcast=True)
-            osc_tx_client.send_message("/escaperoom/challenge/4/failure", 1)
+            self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
         
         elif self.__unlocked:
             logging.debug(f"Correct wire cut")
@@ -124,9 +150,7 @@ class WireCutHandler():
             self.leds["green"].state = True
 
             logging.debug(f"Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-                    
-            osc_tx_client = udp_client.SimpleUDPClient(CONFIG["osc_tx_client_ip"], CONFIG["osc_tx_client_port"], allow_broadcast=True)
-            osc_tx_client.send_message("/escaperoom/challenge/4/success", 1)
+            self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
 
     def reset(self, *a):
         logging.debug("Resetting Handler...")
@@ -179,19 +203,20 @@ class ElectroMagnentHandler():
         self.relay_pin = 4 # GPIO 4, pin 7
         GPIO.setup(self.relay_pin, GPIO.HIGH)
         
-        osc_rx_dispatcher = dispatcher.Dispatcher()
-        osc_rx_dispatcher.map("/escaperoom/vaultdoor/unlock", self.unlock)
-        osc_rx_dispatcher.map("/escaperoom/vaultdoor/lock", self.lock)
+        self.osc_controller = OSCController(
+            CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
+            CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
+        )
+        self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", self.unlock)
+        self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", self.lock)
+        self.osc_controller.start_server()
         
-        osc_rx_server = osc_server.BlockingOSCUDPServer((CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port']), osc_rx_dispatcher)
-        logging.debug(f"Starting OSC server listening on {CONFIG['osc_rx_server_ip']}:{CONFIG['osc_rx_server_port']}")
-        osc_rx_server.serve_forever()
-        
-    def unlock(self):
+    def unlock(self, *args):
         GPIO.output(self.relay_pin, GPIO.HIGH)
         
-    def lock(self):
+    def lock(self, *args):
         GPIO.output(self.relay_pin, GPIO.HIGH)
+
 
 if __name__ == "__main__":
     Thread(target=WireCutHandler).start()
