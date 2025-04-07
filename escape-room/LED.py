@@ -27,37 +27,46 @@ class LEDIndicator():
         GPIO.output(self.pin, GPIO.HIGH if value else GPIO.LOW)
         
     def flash(self, interval: float = 0.2, initial_delay: float = 0):
-        self.stop_flashing()
-        self.state = False
-        
-        logging.debug(f"LEDIndicator(pin={self.pin}) start flashing with interval: {interval}")
-        self.__stop_flashing_event.clear()
-        
-        def thread():
-            if initial_delay:
-                time.sleep(interval)
-            
-            while not self.__stop_flashing_event.is_set():
-                self.state = not self.state
-                time.sleep(interval)
-                
-        self.__flash_thread = threading.Thread(target=thread)
-        self.__flash_thread.start()
-        
-        self.__is_flashing = True
-        
-    def stop_flashing(self):
-        if self.__is_flashing:
-            logging.debug(f"LEDIndicator(pin={self.pin}) stop flashing")
-            self.__stop_flashing_event.set()
-            
-            if self.__flash_thread:
-                self.__flash_thread.join(timeout=1)
-                if self.__flash_thread.is_alive():
-                    logging.warning(f"LEDIndicator(pin={self.pin}) flashing thread did not terminate properly")
-            
-            self.__is_flashing = False
+        try:
+            self.stop_flashing()
             self.state = False
+
+            logging.debug(f"LEDIndicator(pin={self.pin}) start flashing with interval: {interval}")
+            self.__stop_flashing_event.clear()
+
+            def thread():
+                try:
+                    if initial_delay:
+                        time.sleep(initial_delay)
+
+                    while not self.__stop_flashing_event.is_set():
+                        self.state = not self.state
+                        time.sleep(interval)
+                except Exception as e:
+                    logging.error(f"LEDIndicator(pin={self.pin}) encountered an error in flash thread: {e}")
+
+            self.__flash_thread = threading.Thread(target=thread, daemon=True)
+            self.__flash_thread.start()
+
+            self.__is_flashing = True
+        except Exception as e:
+            logging.error(f"LEDIndicator(pin={self.pin}) failed to start flashing: {e}")
+
+    def stop_flashing(self):
+        try:
+            if self.__is_flashing:
+                logging.debug(f"LEDIndicator(pin={self.pin}) stop flashing")
+                self.__stop_flashing_event.set()
+
+                if self.__flash_thread:
+                    self.__flash_thread.join(timeout=1)  # Add a timeout to prevent indefinite blocking
+                    if self.__flash_thread.is_alive():
+                        logging.warning(f"LEDIndicator(pin={self.pin}) flashing thread did not terminate properly")
+
+                self.__is_flashing = False
+                self.state = False
+        except Exception as e:
+            logging.error(f"LEDIndicator(pin={self.pin}) failed to stop flashing: {e}")
     
     def __repr__(self):
         return f"LEDIndicator(pin={self.pin}, state={self.state}, flashing={not self.__stop_flashing})"
