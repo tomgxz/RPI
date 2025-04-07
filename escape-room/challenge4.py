@@ -212,7 +212,8 @@ class ElectroMagnentHandler():
         GPIO.setmode(GPIO.BCM)
         
         self.relay_pin = 4 # GPIO 4, pin 7
-        GPIO.setup(self.relay_pin, GPIO.HIGH)
+        GPIO.setup(self.relay_pin, GPIO.OUT)
+        GPIO.output(self.relay_pin, GPIO.LOW)
         
         self.osc_controller = osc_controller
         self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", self.unlock)
