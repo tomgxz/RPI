@@ -89,102 +89,111 @@ class DiffusalWire():
         return f"DiffusalWire(pin={self.pin}, needs_cutting={self.needs_cutting}, state={self.state})"
 
 
-class WireCutHandler():
-    def __init__(self, osc_controller:OSCController):
-        logging.debug("WIRECUT - Initializing Wire Cut Handler...")
+class Handler():
+    def __init__(self):
         GPIO.setmode(GPIO.BCM)
+        
+        self.osc_controller = OSCController(
+            CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
+            CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
+        )
+        
+        self.init_wire_cutting()
+        self.init_keypad()
+        self.init_vault_door()
+        
+        self.osc_controller.start_server()
+        
+    
+    def init_wire_cutting(self):
+        logging.debug("WIRECUT - Initializing Wire Cut Handler...")
 
-        self.wires:list[DiffusalWire] = [
+        self.wirecut_wires:list[DiffusalWire] = [
             DiffusalWire(wire["pin"], wire["needs_cutting"], self)
             for wire in CONFIG["circuit_breakers"]
         ]
         
-        self.leds:dict[str, LEDIndicator] = {
+        self.wirecut_leds:dict[str, LEDIndicator] = {
             f"{name}": LEDIndicator(pin) 
             for name, pin in CONFIG["leds"].items()
         }
         
-        self.leds["red1"].flash(interval = 0.15)
-        self.leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
-        self.leds["green"].state = False
+        self.wirecut_leds["red1"].flash(interval = 0.15)
+        self.wirecut_leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
+        self.wirecut_leds["green"].state = False
         
-        self.__unlocked = False
-        self.__exploded = False
-        
-        self.osc_controller = osc_controller
-        self.osc_controller.add_handler("/escaperoom/challenge/4/reset", self.reset)
-        
-        self.osc_controller.start_server()
-        
-        self.on_state_change()
+        self.wirecut__unlocked = False
+        self.wirecut__exploded = False
 
-    def on_state_change(self, *a):
-        logging.debug("WIRECUT - Wire cut state changed")
-        
-        if self.__unlocked:
-            logging.debug("WIRECUT - Already unlocked, ignoring state change")
-            return
-        
-        self.__unlocked = False
-        self.__exploded = False
-        
-        cut_state = ""
-        
-        for wire in self.wires:
-            cut_state += str(int(wire.state))
+        def on_state_change(*a):
+            logging.debug("WIRECUT - Wire cut state changed")
             
-            if not wire.state and wire.needs_cutting:
-                self.__unlocked = True
-            elif not wire.state and not wire.needs_cutting:
-                self.__exploded = True
+            if self.wirecut__unlocked:
+                logging.debug("WIRECUT - Already unlocked, ignoring state change")
+                return
+            
+            self.wirecut__unlocked = False
+            self.wirecut__exploded = False
+            
+            cut_state = ""
+            
+            for wire in self.wirecut_wires:
+                cut_state += str(int(wire.state))
                 
-        logging.debug(f"WIRECUT - Current Wire Connections: {cut_state}")
-        
-        if self.__exploded:
-            logging.debug(f"WIRECUT - Incorrect wire cut")
+                if not wire.state and wire.needs_cutting:
+                    self.wirecut__unlocked = True
+                elif not wire.state and not wire.needs_cutting:
+                    self.wirecut__exploded = True
+                    
+            logging.debug(f"WIRECUT - Current Wire Connections: {cut_state}")
             
-            self.leds["red1"].flash(interval = 0.05)
-            self.leds["red2"].flash(interval = 0.06)
-            self.leds["green"].state = False
+            if self.wirecut__exploded:
+                logging.debug(f"WIRECUT - Incorrect wire cut")
+                
+                self.wirecut_leds["red1"].flash(interval = 0.05)
+                self.wirecut_leds["red2"].flash(interval = 0.06)
+                self.wirecut_leds["green"].state = False
+                
+                logging.debug(f"WIRECUT - Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
+                self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
             
-            logging.debug(f"WIRECUT - Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-            self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
-        
-        elif self.__unlocked:
-            logging.debug(f"WIRECUT - Correct wire cut")
+            elif self.wirecut__unlocked:
+                logging.debug(f"WIRECUT - Correct wire cut")
+                
+                for _, led in self.wirecut_leds.items():
+                    led.stop_flashing()
+                    
+                self.wirecut_leds["red1"].state = False
+                self.wirecut_leds["red2"].state = False
+                self.wirecut_leds["green"].state = True
+
+                logging.debug(f"WIRECUT - Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
+                self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
+
+        def reset( *a):
+            logging.debug("WIRECUT - Resetting Handler...")
             
-            for _, led in self.leds.items():
+            self.wirecut__unlocked = False
+            self.wirecut__exploded = False
+            
+            for _, led in self.wirecut_leds.items():
                 led.stop_flashing()
-                
-            self.leds["red1"].state = False
-            self.leds["red2"].state = False
-            self.leds["green"].state = True
-
-            logging.debug(f"WIRECUT - Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-            self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
-
-    def reset(self, *a):
-        logging.debug("WIRECUT - Resetting Handler...")
+            
+            self.wirecut_leds["red1"].flash(interval = 0.15)
+            self.wirecut_leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
+            self.wirecut_leds["green"].state = False
+            
+            on_state_change()
+    
+        on_state_change()
         
-        self.__unlocked = False
-        self.__exploded = False
-        
-        for _, led in self.leds.items():
-            led.stop_flashing()
-        
-        self.leds["red1"].flash(interval = 0.15)
-        self.leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
-        self.leds["green"].state = False
-        
-        self.on_state_change()
-
-
-class KeypadHandler():
-    def __init__(self, osc_controller:OSCController):
+        self.osc_controller.add_handler("/escaperoom/challenge/4/reset", reset)
+    
+    
+    def init_keypad(self):
         logging.debug("KEYPAD - Initializing Keypad Handler...")
-        GPIO.setmode(GPIO.BCM)
         
-        self.keys = [
+        self.keypad_keys = [
             ["1", "2", "3"],
             ["4", "5", "6"],
             ["7", "8", "9"],
@@ -194,48 +203,37 @@ class KeypadHandler():
         # from right to left looking at the keypad, the GPIOs wired in to the pins are:
         # 21, 20, 16, 26, 19, 13, 6, 5
         
-        self.row_pins = [5, 6, 13]
-        self.col_pins = [19, 26, 16, 20]
+        self.keypad_row_pins = [5, 6, 13]
+        self.keypad_col_pins = [19, 26, 16, 20]
         
-        self.factory = rpi_gpio.KeypadFactory()
-        self.keypad = self.factory.create_keypad(keypad=self.keys, row_pins=self.row_pins, col_pins=self.col_pins)
+        self.keypad_factory = rpi_gpio.KeypadFactory()
+        self.keypad_keypad = self.factory.create_keypad(keypad=self.keypad_keys, row_pins=self.keypad_row_pins, col_pins=self.keypad_col_pins)
         
         def print_key(key):
             logging.debug(f"KEYPAD - Key Pressed: {key}")
         
-        self.keypad.registerKeyPressHandler(print_key)
-        
-
-class ElectroMagnentHandler():
-    def __init__(self, osc_controller:OSCController):
+        self.keypad_keypad.registerKeyPressHandler(print_key)
+    
+    
+    def init_vault_door(self):
         logging.debug("ELECTROMAGNET - Initializing Electromagnet Handler...")
-        GPIO.setmode(GPIO.BCM)
         
-        self.relay_pin = 4 # GPIO 4, pin 7
-        GPIO.setup(self.relay_pin, GPIO.OUT)
-        GPIO.output(self.relay_pin, GPIO.LOW)
+        relay_pin = 4
         
-        self.osc_controller = osc_controller
-        self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", self.unlock)
-        self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", self.lock)
+        GPIO.setup(relay_pin, GPIO.OUT)
+        GPIO.output(relay_pin, GPIO.LOW)
         
-        self.osc_controller.start_server()
+        def unlock(self, *args):
+            logging.debug("ELECTROMAGNET - Unlocking door...")
+            GPIO.output(relay_pin, GPIO.HIGH)
+            
+        def lock(self, *args):
+            logging.debug("ELECTROMAGNET - Locking door...")
+            GPIO.output(relay_pin, GPIO.LOW)
+            
+        self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", unlock)
+        self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", lock)
         
-    def unlock(self, *args):
-        logging.debug("ELECTROMAGNET - Unlocking door...")
-        GPIO.output(self.relay_pin, GPIO.HIGH)
-        
-    def lock(self, *args):
-        logging.debug("ELECTROMAGNET - Locking door...")
-        GPIO.output(self.relay_pin, GPIO.LOW)
-
 
 if __name__ == "__main__":
-    osc_controller = OSCController(
-        CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
-        CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
-    )
-    
-    Thread(target=WireCutHandler, args=[osc_controller]).start()
-    Thread(target=KeypadHandler, args=[osc_controller]).start()
-    Thread(target=ElectroMagnentHandler, args=[osc_controller]).start()
+    Handler()
