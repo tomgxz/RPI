@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {    
     "circuit_breakers": [
-        {"pin": 17, "needs_cutting": False},  # GPIO 17,  pin 11
+        {"pin": 12, "needs_cutting": False},  # GPIO 18,  pin 12
         {"pin": 27, "needs_cutting": False},  # GPIO 27,  pin 13
         {"pin": 22, "needs_cutting": False},  # GPIO 22,  pin 15
         {"pin": 10, "needs_cutting": False},  # GPIO 10,  pin 19
