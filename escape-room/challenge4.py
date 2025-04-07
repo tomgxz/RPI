@@ -177,8 +177,12 @@ class Handler():
             self.wirecut_leds["red2"].flash(interval = 0.06)
             self.wirecut_leds["green"].state = False
             
+            print("Got here")
+            
             logging.debug(f"WIRECUT - Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
             self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
+            
+            print("Got here 2")
         
         elif self.wirecut__unlocked:
             logging.debug(f"WIRECUT - Correct wire cut")
