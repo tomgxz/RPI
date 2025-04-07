@@ -50,7 +50,11 @@ class LEDIndicator():
         if self.__is_flashing:
             logging.debug(f"LEDIndicator(pin={self.pin}) stop flashing")
             self.__stop_flashing_event.set()
-            self.__flash_thread.join()
+            
+            if self.__flash_thread:
+                self.__flash_thread.join(timeout=1)
+                if self.__flash_thread.is_alive():
+                    logging.warning(f"LEDIndicator(pin={self.pin}) flashing thread did not terminate properly")
             
             self.__is_flashing = False
             self.state = False
