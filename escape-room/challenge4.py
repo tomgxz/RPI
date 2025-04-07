@@ -66,14 +66,14 @@ class OSCController():
         
 
 class DiffusalWire():
-    def __init__(self, pin: int, needs_cutting: bool, handler: "DiffusalWire"):
+    def __init__(self, pin: int, needs_cutting: bool, handler: "Handler"):
         logging.debug(f"WIRECUT - Initializing DiffusalWire: pin={pin}, needs_cutting={needs_cutting}")
-        self.handler:"DiffusalWire" = handler
+        self.handler:"Handler" = handler
         self.pin:int = pin
         self.needs_cutting:bool = needs_cutting
         
         GPIO.setup(self.pin, GPIO.IN)
-        GPIO.add_event_detect(self.pin, GPIO.BOTH, callback=self.handler.on_state_change, bouncetime=200)
+        GPIO.add_event_detect(self.pin, GPIO.BOTH, callback=self.handler.wirecut_on_state_change, bouncetime=200)
 
     @property
     def state(self) -> bool:
@@ -125,51 +125,6 @@ class Handler():
         self.wirecut__unlocked = False
         self.wirecut__exploded = False
 
-        def on_state_change(*a):
-            logging.debug("WIRECUT - Wire cut state changed")
-            
-            if self.wirecut__unlocked:
-                logging.debug("WIRECUT - Already unlocked, ignoring state change")
-                return
-            
-            self.wirecut__unlocked = False
-            self.wirecut__exploded = False
-            
-            cut_state = ""
-            
-            for wire in self.wirecut_wires:
-                cut_state += str(int(wire.state))
-                
-                if not wire.state and wire.needs_cutting:
-                    self.wirecut__unlocked = True
-                elif not wire.state and not wire.needs_cutting:
-                    self.wirecut__exploded = True
-                    
-            logging.debug(f"WIRECUT - Current Wire Connections: {cut_state}")
-            
-            if self.wirecut__exploded:
-                logging.debug(f"WIRECUT - Incorrect wire cut")
-                
-                self.wirecut_leds["red1"].flash(interval = 0.05)
-                self.wirecut_leds["red2"].flash(interval = 0.06)
-                self.wirecut_leds["green"].state = False
-                
-                logging.debug(f"WIRECUT - Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-                self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
-            
-            elif self.wirecut__unlocked:
-                logging.debug(f"WIRECUT - Correct wire cut")
-                
-                for _, led in self.wirecut_leds.items():
-                    led.stop_flashing()
-                    
-                self.wirecut_leds["red1"].state = False
-                self.wirecut_leds["red2"].state = False
-                self.wirecut_leds["green"].state = True
-
-                logging.debug(f"WIRECUT - Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
-                self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
-
         def reset( *a):
             logging.debug("WIRECUT - Resetting Handler...")
             
@@ -183,12 +138,58 @@ class Handler():
             self.wirecut_leds["red2"].flash(interval = 0.15, initial_delay = 0.08)
             self.wirecut_leds["green"].state = False
             
-            on_state_change()
+            self.wirecut_on_state_change()
     
-        on_state_change()
+        self.wirecut_on_state_change()
         
         self.osc_controller.add_handler("/escaperoom/challenge/4/reset", reset)
     
+    
+    def wirecut_on_state_change(self, *a):
+        logging.debug("WIRECUT - Wire cut state changed")
+        
+        if self.wirecut__unlocked:
+            logging.debug("WIRECUT - Already unlocked, ignoring state change")
+            return
+        
+        self.wirecut__unlocked = False
+        self.wirecut__exploded = False
+        
+        cut_state = ""
+        
+        for wire in self.wirecut_wires:
+            cut_state += str(int(wire.state))
+            
+            if not wire.state and wire.needs_cutting:
+                self.wirecut__unlocked = True
+            elif not wire.state and not wire.needs_cutting:
+                self.wirecut__exploded = True
+                
+        logging.debug(f"WIRECUT - Current Wire Connections: {cut_state}")
+        
+        if self.wirecut__exploded:
+            logging.debug(f"WIRECUT - Incorrect wire cut")
+            
+            self.wirecut_leds["red1"].flash(interval = 0.05)
+            self.wirecut_leds["red2"].flash(interval = 0.06)
+            self.wirecut_leds["green"].state = False
+            
+            logging.debug(f"WIRECUT - Sending failure osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
+            self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
+        
+        elif self.wirecut__unlocked:
+            logging.debug(f"WIRECUT - Correct wire cut")
+            
+            for _, led in self.wirecut_leds.items():
+                led.stop_flashing()
+                
+            self.wirecut_leds["red1"].state = False
+            self.wirecut_leds["red2"].state = False
+            self.wirecut_leds["green"].state = True
+
+            logging.debug(f"WIRECUT - Sending success osc command to {CONFIG['osc_tx_client_ip']}:{CONFIG['osc_tx_client_port']}")
+            self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
+
     
     def init_keypad(self):
         logging.debug("KEYPAD - Initializing Keypad Handler...")
