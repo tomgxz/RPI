@@ -140,16 +140,6 @@ class Handler():
         self.wirecut_on_state_change()
         
         self.osc_controller.add_handler("/escaperoom/challenge/4/reset", reset)
-        
-        import threading
-        
-        def debug():
-            _cut_state = ""
-            for wire in self.wirecut_wires:
-                _cut_state += str(int(wire.state))
-            print(_cut_state)
-            
-        threading.Thread(target=debug).start()
     
     
     def wirecut_on_state_change(self, *a):
