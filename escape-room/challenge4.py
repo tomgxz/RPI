@@ -42,15 +42,12 @@ class OSCController():
         self.dispatcher = dispatcher.Dispatcher()
         self.server = osc_server.BlockingOSCUDPServer((self.rx_ip, self.rx_port), self.dispatcher)
 
-        # Enable port reuse to avoid 'Address already in use' errors
-        self.server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
     def add_handler(self, address: str, handler):
         self.dispatcher.map(address, handler)
 
     def start_server(self):
         logging.debug(f"Starting OSC server listening on {self.rx_ip}:{self.rx_port}")
-        Thread(target=self.server.serve_forever).start()
+        self.server.serve_forever()
 
     def send_message(self, address: str, value):
         logging.debug(f"Sending OSC message to {self.tx_ip}:{self.tx_port} - {address}: {value}")
@@ -83,7 +80,7 @@ class DiffusalWire():
 
 
 class WireCutHandler():
-    def __init__(self):
+    def __init__(self, osc_controller:OSCController):
         logging.debug("Initializing Wire Cut Handler...")
         GPIO.setmode(GPIO.BCM)
 
@@ -104,12 +101,8 @@ class WireCutHandler():
         self.__unlocked = False
         self.__exploded = False
         
-        self.osc_controller = OSCController(
-            CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
-            CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
-        )
+        self.osc_controller = osc_controller
         self.osc_controller.add_handler("/escaperoom/challenge/4/reset", self.reset)
-        self.osc_controller.start_server()
         
         self.on_state_change()
 
@@ -169,7 +162,7 @@ class WireCutHandler():
 
 
 class KeypadHandler():
-    def __init__(self):
+    def __init__(self, osc_controller:OSCController):
         logging.debug("Initializing Keypad Handler...")
         GPIO.setmode(GPIO.BCM)
         
@@ -196,29 +189,32 @@ class KeypadHandler():
         
 
 class ElectroMagnentHandler():
-    def __init__(self):
+    def __init__(self, osc_controller:OSCController):
         logging.debug("Initializing Electromagnet Handler...")
         GPIO.setmode(GPIO.BCM)
         
         self.relay_pin = 4 # GPIO 4, pin 7
         GPIO.setup(self.relay_pin, GPIO.HIGH)
         
-        self.osc_controller = OSCController(
-            CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
-            CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
-        )
+        self.osc_controller = osc_controller
         self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", self.unlock)
         self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", self.lock)
-        self.osc_controller.start_server()
         
     def unlock(self, *args):
+        logging.debug("Unlocking door...")
         GPIO.output(self.relay_pin, GPIO.HIGH)
         
     def lock(self, *args):
-        GPIO.output(self.relay_pin, GPIO.HIGH)
+        logging.debug("Locking door...")
+        GPIO.output(self.relay_pin, GPIO.LOW)
 
 
 if __name__ == "__main__":
-    Thread(target=WireCutHandler).start()
-    Thread(target=KeypadHandler).start()
-    Thread(target=ElectroMagnentHandler).start()
+    osc_controller = OSCController(
+        CONFIG['osc_rx_server_ip'], CONFIG['osc_rx_server_port'],
+        CONFIG['osc_tx_client_ip'], CONFIG['osc_tx_client_port']
+    )
+    
+    Thread(target=WireCutHandler, args=[osc_controller]).start()
+    Thread(target=KeypadHandler, args=[osc_controller]).start()
+    Thread(target=ElectroMagnentHandler, args=[osc_controller]).start()
