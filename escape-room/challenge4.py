@@ -116,12 +116,18 @@ class WireCutHandler():
         self.__unlocked = False
         self.__exploded = False
         
+        cut_state = ""
+        
         for wire in self.wires:
+            cut_state += int(wire.state)
+            
             if not wire.state and wire.needs_cutting:
                 self.__unlocked = True
             elif not wire.state and not wire.needs_cutting:
                 self.__exploded = True
                 
+        logging.debug(f"WIRECUT - Current Wire Connections: {cut_state}")
+        
         if self.__exploded:
             logging.debug(f"WIRECUT - Incorrect wire cut")
             
