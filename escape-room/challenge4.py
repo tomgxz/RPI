@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO # type: ignore
 from pythonosc import udp_client, dispatcher, osc_server
 from pad4pi import rpi_gpio # type: ignore
-import logging
+import logging, time
 
 from LED import LEDIndicator
 
@@ -145,7 +145,7 @@ class Handler():
     def wirecut_on_state_change(self, *a):
         logging.debug("WIRECUT - Wire cut state changed")
         
-        if self.wirecut__unlocked:
+        if self.wirecut__unlocked or self.wirecut__exploded:
             logging.debug("WIRECUT - Already unlocked, ignoring state change")
             return
         
@@ -153,6 +153,8 @@ class Handler():
         self.wirecut__exploded = False
         
         cut_state = ""
+        
+        time.sleep(0.1)
         
         for wire in self.wirecut_wires:
             cut_state += str(int(wire.state))
