@@ -7,9 +7,12 @@ from LED import LEDIndicator
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+        
+# from right to left looking at the keypad, the GPIOs wired in to the pins are:
+# 21, 20, 16, 26, 19, 13, 6, 5
 
-CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {    
-    "circuit_breakers": [
+CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
+    "defuse_wires": [
         {"pin": 18, "needs_cutting": False},  # GPIO 18,  pin 12
         {"pin": 27, "needs_cutting": False},  # GPIO 27,  pin 13
         {"pin": 22, "needs_cutting": False},  # GPIO 22,  pin 15
@@ -25,7 +28,12 @@ CONFIG:dict[str, str | int | list[dict] | dict[str, int]] = {
     "osc_rx_server_ip": "0.0.0.0",
     "osc_rx_server_port": 10001,
     "osc_tx_client_ip": "10.100.20.255",
-    "osc_tx_client_port": 10000
+    "osc_tx_client_port": 10000,
+    
+    "keypad_row_pins": [19, 26, 16, 20],
+    "keypad_col_pins": [6, 5, 13],
+    "keypad_correct_code": 8140,
+    "keypad_attempts": 5,
 }
 
 
@@ -107,7 +115,7 @@ class Handler():
 
         self.wirecut_wires:list[DiffusalWire] = [
             DiffusalWire(wire["pin"], wire["needs_cutting"], self)
-            for wire in CONFIG["circuit_breakers"]
+            for wire in CONFIG["defuse_wires"]
         ]
         
         self.wirecut_leds:dict[str, LEDIndicator] = {
@@ -203,18 +211,11 @@ class Handler():
             ["*", "0", "#"]
         ]
         
-        # from right to left looking at the keypad, the GPIOs wired in to the pins are:
-        # 21, 20, 16, 26, 19, 13, 6, 5
-        
-        self.keypad_row_pins = [19, 26, 16, 20]
-        self.keypad_col_pins = [6, 5, 13] 
-        
         self.keypad_factory = rpi_gpio.KeypadFactory()
-        self.keypad_keypad = self.keypad_factory.create_keypad(keypad=self.keypad_keys, row_pins=self.keypad_row_pins, col_pins=self.keypad_col_pins)
+        self.keypad_keypad = self.keypad_factory.create_keypad(keypad=self.keypad_keys, row_pins=CONFIG["keypad_row_pins"], col_pins=CONFIG["keypad_col_pins"])
         
         self.keypad_input = ""
         self.keypad_strikes = 0
-        self.correct_code = "8140"       
         
         def handle_key(key):
             logging.debug(f"KEYPAD - Key Pressed: {key}")
@@ -236,7 +237,7 @@ class Handler():
             logging.debug(f"KEYPAD - Current Input: {self.keypad_input}")
             
             if len(self.keypad_input) == 4:  # Check if 4 digits are entered
-                if self.keypad_input == self.correct_code:
+                if self.keypad_input == CONFIG["keypad_correct_code"]:
                     logging.debug("KEYPAD - Correct code entered")
                     self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
                     self.keypad_finished = True
@@ -244,8 +245,8 @@ class Handler():
                     logging.debug("KEYPAD - Incorrect code entered")
                     self.keypad_strikes += 1
                     
-                    if self.keypad_strikes >= 3:
-                        logging.debug("KEYPAD - 3 strikes reached")
+                    if self.keypad_strikes >= CONFIG["keypad_attempts"]:
+                        logging.debug(f"KEYPAD - {CONFIG["keypad_attempts"]} strikes reached")
                         self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
                         self.keypad_finished = True
                         
@@ -264,11 +265,11 @@ class Handler():
         GPIO.setup(relay_pin, GPIO.OUT)
         GPIO.output(relay_pin, GPIO.LOW)
         
-        def unlock(self, *args):
+        def unlock(*args):
             logging.debug("ELECTROMAGNET - Unlocking door...")
             GPIO.output(relay_pin, GPIO.LOW)
             
-        def lock(self, *args):
+        def lock(*args):
             logging.debug("ELECTROMAGNET - Locking door...")
             GPIO.output(relay_pin, GPIO.HIGH)
             
