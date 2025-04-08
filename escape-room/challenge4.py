@@ -106,6 +106,7 @@ class Handler():
         self.init_wire_cutting()
         self.init_keypad()
         self.init_vault_door()
+        self.init_button()
         
         self.osc_controller.start_server()
         
@@ -275,7 +276,8 @@ class Handler():
             
         self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", unlock)
         self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", lock)
-        
+    
+    
     def init_button(self):
         logging.debug("BUTTON - Initializing Button Handler...")
         
