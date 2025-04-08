@@ -237,7 +237,7 @@ class Handler():
             logging.debug(f"KEYPAD - Current Input: {self.keypad_input}")
             
             if len(self.keypad_input) == 4:  # Check if 4 digits are entered
-                if self.keypad_input == CONFIG["keypad_correct_code"]:
+                if int(self.keypad_input) == CONFIG["keypad_correct_code"]:
                     logging.debug("KEYPAD - Correct code entered")
                     self.osc_controller.send_message("/escaperoom/challenge/4/success", 1)
                     self.keypad_finished = True
@@ -275,6 +275,18 @@ class Handler():
             
         self.osc_controller.add_handler("/escaperoom/vaultdoor/unlock", unlock)
         self.osc_controller.add_handler("/escaperoom/vaultdoor/lock", lock)
+        
+    def init_button(self):
+        logging.debug("BUTTON - Initializing Button Handler...")
+        
+        button_pin = 3
+        
+        def on_state_change(*args):
+            logging.debug("BUTTON - button state changed")
+            self.osc_controller.send_message(f"/escaperoom/challenge/4/button/{'falling' if GPIO.input(button_pin) == GPIO.HIGH else 'rising'}", 1)
+        
+        GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.add_event_detect(button_pin, GPIO.BOTH, callback=on_state_change, bouncetime=200)
         
 
 if __name__ == "__main__":
