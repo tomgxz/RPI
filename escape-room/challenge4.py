@@ -246,7 +246,7 @@ class Handler():
                     self.keypad_strikes += 1
                     
                     if self.keypad_strikes >= CONFIG["keypad_attempts"]:
-                        logging.debug(f"KEYPAD - {CONFIG["keypad_attempts"]} strikes reached")
+                        logging.debug(f"KEYPAD - {CONFIG['keypad_attempts']} strikes reached")
                         self.osc_controller.send_message("/escaperoom/challenge/4/failure", 1)
                         self.keypad_finished = True
                         
