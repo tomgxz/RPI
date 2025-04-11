@@ -1,3 +1,4 @@
 rpi-lgpio
 python-osc
 pad4pi
+RPLCD
