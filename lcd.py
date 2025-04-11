@@ -1,13 +1,10 @@
 from RPLCD.i2c import CharLCD # type: ignore
 from time import sleep
 
-# Create LCD instance (check number of columns and rows!)
-lcd = CharLCD('PCF8574', 0x20, cols=20, rows=4, backlight_enabled=False)
+lcd = CharLCD('PCF8574', 0x20, cols=20, rows=4)
 
-# Clear and write message
 lcd.clear()
-lcd.write_string("Hello, world!")
 
-# Keep it on screen for 5 seconds
-sleep(5)
-lcd.clear()
+lcd.write_string("Help!")
+lcd.cursor_pos = (2, 0)
+lcd.write_string("I am stuck inside this LCD display :(")
